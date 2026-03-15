@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Railway Contact Registry</title>
+    <style>
+        :root {
+            font-family: "Segoe UI", sans-serif;
+            color: #0f172a;
+            background-color: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #dbeafe, #fef9c3);
+        }
+
+        .card {
+            width: min(480px, 90vw);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+            padding: 2.5rem;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.75rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        input {
+            border: 1px solid #cbd5f5;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 0.85rem;
+            font-size: 1rem;
+            font-weight: 600;
+            background: #2563eb;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .flash {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            color: #b91c1c;
+        }
+
+        .success {
+            background: #dcfce7;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        li {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+        }
+
+        .empty-state {
+            color: #475569;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="card">
+        <h1>Join the Railway Launch List</h1>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="flash {{ 'success' if 'Thanks' in message else '' }}">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form action="{{ url_for('submit') }}" method="POST">
+            <div>
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="ava.rail" required>
+            </div>
+            <div>
+                <label for="email">Email</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="ava@example.com"
+                    pattern="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+                    title="Enter an email like name@example.com"
+                    required
+                >
+            </div>
+            <button type="submit">Save Details</button>
+        </form>
+        <section>
+            <h2>Recent Signups</h2>
+            {% if submissions %}
+                <ul>
+                    {% for entry in submissions %}
+                        <li>
+                            <strong>{{ entry.username }}</strong><br>
+                            <span>{{ entry.email }}</span><br>
+                            <small>{{ entry.created_at }}</small>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">No submissions yet. Be the first to hop aboard!</p>
+            {% endif %}
+        </section>
+    </section>
+</body>
+</html>
