@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 
 
-EMAIL_PATTERN = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+EMAIL_PATTERN = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z.-]+\.[A-Za-z]{2,}$")
 METADATA = MetaData()
 SUBMISSIONS_TABLE = Table(
     "submissions",
