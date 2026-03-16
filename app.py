@@ -1,51 +1,78 @@
 import os
 import re
-import sqlite3
-from contextlib import closing
+from pathlib import Path
 
 from flask import Flask, flash, redirect, render_template, request, url_for
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    func,
+    select,
+)
+from sqlalchemy.engine import Engine
 
 
 EMAIL_PATTERN = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+METADATA = MetaData()
+SUBMISSIONS_TABLE = Table(
+    "submissions",
+    METADATA,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("username", String(255), nullable=False),
+    Column("email", String(320), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+)
 
 
-def _get_database_path() -> str:
-    default_path = os.path.join(os.path.dirname(__file__), "data", "submissions.db")
-    return os.environ.get("DATABASE_PATH", default_path)
+def _default_sqlite_path() -> Path:
+    return Path(__file__).resolve().parent / "data" / "submissions.db"
 
 
-def _ensure_database(db_path: str) -> None:
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    with closing(sqlite3.connect(db_path)) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS submissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                email TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """
+def _build_database_url() -> str:
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        if database_url.startswith("postgres://"):
+            return database_url.replace("postgres://", "postgresql+psycopg://", 1)
+        if database_url.startswith("postgresql://") and "+psycopg" not in database_url:
+            return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return database_url
+
+    db_path = Path(os.environ.get("DATABASE_PATH", str(_default_sqlite_path()))).resolve()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    return f"sqlite:///{db_path.as_posix()}"
+
+
+def _create_engine() -> Engine:
+    return create_engine(_build_database_url(), future=True, pool_pre_ping=True)
+
+
+def _ensure_database(engine: Engine) -> None:
+    METADATA.create_all(engine)
+
+
+def _fetch_submissions(engine: Engine) -> list[dict[str, str]]:
+    stmt = (
+        select(
+            SUBMISSIONS_TABLE.c.username,
+            SUBMISSIONS_TABLE.c.email,
+            SUBMISSIONS_TABLE.c.created_at,
         )
-        conn.commit()
+        .order_by(SUBMISSIONS_TABLE.c.created_at.desc())
+        .limit(20)
+    )
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).mappings().all()
+    return [dict(row) for row in rows]
 
 
-def _fetch_submissions(db_path: str) -> list[dict[str, str]]:
-    with closing(sqlite3.connect(db_path)) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT username, email, created_at FROM submissions ORDER BY created_at DESC LIMIT 20"
-        ).fetchall()
-        return [dict(row) for row in rows]
-
-
-def _insert_submission(db_path: str, username: str, email: str) -> None:
-    with closing(sqlite3.connect(db_path)) as conn:
-        conn.execute(
-            "INSERT INTO submissions (username, email) VALUES (?, ?)",
-            (username, email),
-        )
-        conn.commit()
+def _insert_submission(engine: Engine, username: str, email: str) -> None:
+    with engine.begin() as conn:
+        conn.execute(SUBMISSIONS_TABLE.insert().values(username=username, email=email))
 
 
 def _is_valid_email(email: str) -> bool:
@@ -54,14 +81,16 @@ def _is_valid_email(email: str) -> bool:
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["DATABASE_PATH"] = _get_database_path()
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
-    _ensure_database(app.config["DATABASE_PATH"])
+    engine = _create_engine()
+    app.config["DB_ENGINE"] = engine
+
+    _ensure_database(engine)
 
     @app.get("/")
     def index():
-        submissions = _fetch_submissions(app.config["DATABASE_PATH"])
+        submissions = _fetch_submissions(app.config["DB_ENGINE"])
         return render_template("index.html", submissions=submissions)
 
     @app.post("/submit")
@@ -77,7 +106,7 @@ def create_app() -> Flask:
             flash("Please provide a valid email address.")
             return redirect(url_for("index"))
 
-        _insert_submission(app.config["DATABASE_PATH"], username, email)
+        _insert_submission(app.config["DB_ENGINE"], username, email)
         flash("Thanks! Your details have been saved.")
         return redirect(url_for("index"))
 
