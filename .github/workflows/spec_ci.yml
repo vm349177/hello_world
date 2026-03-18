@@ -27,8 +27,8 @@ jobs:
       - name: Validate spec
         run: python validate_spec.py "${{ steps.spec.outputs.file }}"
     outputs:
-      branch: ${{ steps.spec.outputs.branch }}
-      file: ${{ steps.spec.outputs.file }}
+      branch: BRANCH
+      file: SPEC_FILE
 
   approval:
     runs-on: ubuntu-latest
