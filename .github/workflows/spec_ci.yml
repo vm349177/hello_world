@@ -61,7 +61,10 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@users.noreply.github.com"
           git checkout -b "implement/${{ needs.validate_spec.outputs.branch }}"
-
+      - name: Create dummy file
+        run: |
+          echo "Test implementation" > test.txt
+          
       # - name: Run AI agent
       #   run: |
       #     python run_agent.py --spec "${{ steps.spec.outputs.file }}" --branch "implement/${{ steps.spec.outputs.branch }}"
