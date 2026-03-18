@@ -8,8 +8,13 @@ permissions:
   pull-requests: write
   issues: write
 jobs:
-  validate-spec:
+  validate_spec:
     runs-on: ubuntu-latest
+
+    outputs:
+      branch: ${{ steps.spec.outputs.branch }}
+      file: ${{ steps.spec.outputs.file }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,15 +31,10 @@ jobs:
 
       - name: Validate spec
         run: python validate_spec.py "${{ steps.spec.outputs.file }}"
-    outputs:
-      branch: BRANCH
-      file: SPEC_FILE
 
   approval:
     runs-on: ubuntu-latest
-    needs: validate-spec
-    environment:
-      name: "noble-appreciation / staging"
+    needs: validate_spec
     steps:
       - name: Request approval
         uses: trstringer/manual-approval@v1.12.0
@@ -42,14 +42,16 @@ jobs:
           secret: ${{ secrets.GITHUB_TOKEN }}
           approvers: vm349177
           minimum-approvals: 1
-          issue-title: "Approve spec ${{ needs.validate-spec.outputs.branch }}"
+          issue-title: "Approve spec ${{ needs.validate_spec.outputs.branch }}"
           issue-body: |
-            Approve to start implementation of spec ${{ needs.validate-spec.outputs.branch }}
-            File: ${{ needs.validate-spec.outputs.file }}
+            Approve to start implementation of spec ${{ needs.validate_spec.outputs.branch }}
+            File: ${{ needs.validate_spec.outputs.file }}
 
   implement-spec:
     runs-on: ubuntu-latest
-    needs: approval
+    needs: 
+      -approval
+      -validate_spec
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,7 +60,7 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@users.noreply.github.com"
-          git checkout -b "implement/${{ needs.validate-spec.outputs.branch }}"
+          git checkout -b "implement/${{ needs.validate_spec.outputs.branch }}"
 
       # - name: Run AI agent
       #   run: |
@@ -67,15 +69,15 @@ jobs:
       - name: Push changes
         run: |
           git add .
-          git commit -m "Implement spec ${{ needs.validate-spec.outputs.branch }}"
-          git push origin "implement/${{ needs.validate-spec.outputs.branch }}"
+          git commit -m "Implement spec ${{ needs.validate_spec.outputs.branch }}"
+          git push origin "implement/${{ needs.validate_spec.outputs.branch }}"
 
       - name: Create PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
-            --title "${{ needs.validate-spec.outputs.branch }}: Auto Implementation" \
-            --body "Generated from spec ${{ needs.validate-spec.outputs.file }}" \
+            --title "${{ needs.validate_spec.outputs.branch }}: Auto Implementation" \
+            --body "Generated from spec ${{ needs.validate_spec.outputs.file }}" \
             --base main \
-            --head "implement/${{ needs.validate-spec.outputs.branch }}" || echo "PR already exists"
+            --head "implement/${{ needs.validate_spec.outputs.branch }}" || echo "PR already exists"
