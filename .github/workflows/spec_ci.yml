@@ -35,13 +35,23 @@ jobs:
     environment:
       name: "noble-appreciation / staging"
     steps:
-      - name: Await approval
-        run: echo "Spec ${{ needs.validate-spec.outputs.branch }} approved"
+      - name: Request approval
+        uses: trstringer/manual-approval@v1.12.0c
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          minimum_approvals: 1
+          issue_title: "Approve spec ${{ needs.validate-spec.outputs.branch }}"
+          issue_body: |
+            Approve to start implementation of spec ${{ needs.validate-spec.outputs.branch }}
+            File: ${{ needs.validate-spec.outputs.file }}
 
   implement-spec:
     runs-on: ubuntu-latest
     needs: approval
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Create implementation branch
         run: |
           git config --global user.name "github-actions"
