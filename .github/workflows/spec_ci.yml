@@ -58,13 +58,23 @@ jobs:
 
       - name: Create implementation branch
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@users.noreply.github.com"
-          git checkout -b "implement/${{ needs.validate_spec.outputs.branch }}"
+          BRANCH="${{ needs.validate_spec.outputs.branch }}"
+          FULL_BRANCH="implement/$BRANCH"
+
+          git fetch origin
+
+          if git ls-remote --exit-code --heads origin "$FULL_BRANCH"; then
+            echo "Branch exists. Checking out and pulling..."
+            git checkout "$FULL_BRANCH"
+            git pull origin "$FULL_BRANCH"
+          else
+            echo "Creating new branch..."
+            git checkout -b "$FULL_BRANCH"
+          fi
       - name: Create dummy file
         run: |
           echo "Test implementation" > test.txt
-          
+
       # - name: Run AI agent
       #   run: |
       #     python run_agent.py --spec "${{ steps.spec.outputs.file }}" --branch "implement/${{ steps.spec.outputs.branch }}"
