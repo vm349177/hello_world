@@ -60,7 +60,7 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@users.noreply.github.com"
-          BRANCH="${{ needs.validate-spec.outputs.branch }}"
+          BRANCH="${{ needs.validate_spec.outputs.branch }}"
           FULL_BRANCH="implement/$BRANCH"
 
           git fetch origin

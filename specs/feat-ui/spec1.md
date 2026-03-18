@@ -9,7 +9,7 @@ Improve the readability of the "Recent Signups" list by moving the submission ti
 
 ## Requirements
 1. **Layout**
-	- Username (bold) and email remain left-aligned, stacked.
+	- Username and email remain left-aligned, stacked.
 	- Timestamp displays on the same row as the username, aligned to the right edge of the card.
 	- When the viewport is narrow (<480px) fall back to stacking timestamp under username to avoid overflow.
 2. **Visual Treatment**
