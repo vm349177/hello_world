@@ -75,7 +75,7 @@ jobs:
           fi
       - name: Create dummy file
         run: |
-          echo "Test implementation" > test3.txt
+          echo "Test implementation" > test4.txt
 
       # - name: Run AI agent
       #   run: |
@@ -89,7 +89,7 @@ jobs:
 
       - name: Create PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           gh pr create \
             --title "${{ needs.validate_spec.outputs.branch }}: Auto Implementation" \
