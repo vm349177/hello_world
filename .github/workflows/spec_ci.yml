@@ -1,0 +1,70 @@
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'specs/feat-*/spec1.md'
+
+jobs:
+  validate-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract spec
+        id: spec
+        run: |
+          SPEC_FILE=$(ls specs/feat-*/*.md | head -n 1)
+          BRANCH=$(basename $(dirname "$SPEC_FILE"))
+          echo "Spec file: $SPEC_FILE"
+          echo "Branch name: $BRANCH"
+          echo "file=$SPEC_FILE" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Validate spec
+        run: python validate_spec.py "${{ steps.spec.outputs.file }}"
+    outputs:
+      branch: ${{ steps.spec.outputs.branch }}
+      file: ${{ steps.spec.outputs.file }}
+
+  Approval:
+    runs-on: ubuntu-latest
+    needs: validate-spec
+    steps:
+      - name: Trigger approval
+        uses: trstringer/approval@v1
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          minimum_approvals: 1
+          issue_title: "Approve spec ${{ steps.spec.outputs.branch }}"
+          issue_body: "Approve to start implementation of spec ${{ steps.spec.outputs.branch }}"
+
+  implement-spec:
+    runs-on: ubuntu-latest
+    needs: approval
+    steps:
+      - name: Create implementation branch
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+          git checkout -b "implement/${{ steps.spec.outputs.branch }}"
+
+      # - name: Run AI agent
+      #   run: |
+      #     python run_agent.py --spec "${{ steps.spec.outputs.file }}" --branch "implement/${{ steps.spec.outputs.branch }}"
+
+      - name: Push changes
+        run: |
+          git add .
+          git commit -m "Implement spec ${{ steps.spec.outputs.branch }}"
+          git push origin "implement/${{ steps.spec.outputs.branch }}"
+
+      - name: Create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "${{ steps.spec.outputs.branch }}: Auto Implementation" \
+            --body "Generated from spec ${{ steps.spec.outputs.file }}" \
+            --base main \
+            --head "implement/${{ steps.spec.outputs.branch }}" || echo "PR already exists"
